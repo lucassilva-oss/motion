@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "remotion studio",
-    "build": "remotion render HelloWorld out/video.mp4",
+    "build": "remotion render HelloWorld out/hello.mp4",
+    "render": "remotion render InteligenMotion out/inteligen-motion.mp4",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "type": "module",
@@ -18,6 +19,7 @@
   "license": "ISC",
   "dependencies": {
     "@remotion/cli": "^4.0.484",
+    "@remotion/media-utils": "^4.0.484",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "remotion": "^4.0.484"
