@@ -6,28 +6,29 @@ import {
   Easing,
   Img,
   staticFile,
+  random,
 } from 'remotion';
-import { useMemo } from 'react';
 
-// ─── Easing helpers ──────────────────────────────────────────────────────────
 const easeInOut = Easing.bezier(0.45, 0, 0.55, 1);
 const easeOut   = Easing.bezier(0.0,  0, 0.2,  1);
 
-// ─── Particle component ───────────────────────────────────────────────────────
+// Seeds are static strings — deterministic per-particle
+const PARTICLE_SEEDS = Array.from({ length: 45 }, (_, i) => `particle-${i}`);
+
 const Particle = ({ seed, totalFrames }) => {
   const frame = useCurrentFrame();
 
-  const x  = ((seed * 137.508) % 1) * 100; // percent
-  const size = 1.5 + ((seed * 73.1) % 1) * 2.5;
-  const speed = 0.04 + ((seed * 11.3) % 1) * 0.06;
-  const delay = ((seed * 53.7) % 1) * totalFrames;
-  const opacity = 0.15 + ((seed * 31.9) % 1) * 0.25;
+  const x       = random(`${seed}-x`)       * 100;
+  const size    = 1.5 + random(`${seed}-sz`) * 2.5;
+  const delay   = random(`${seed}-delay`)   * totalFrames;
+  const opacity = 0.15 + random(`${seed}-op`) * 0.25;
 
-  const adjustedFrame = (frame + delay) % totalFrames;
+  const adjustedFrame = (frame + Math.floor(delay)) % totalFrames;
   const progress = adjustedFrame / totalFrames;
 
-  const y = 110 - progress * 130; // bottom to top
-  const wobble = Math.sin(progress * Math.PI * 6 + seed * 10) * 1.5;
+  // deterministic sine via frame — Math.sin is fine (it's not randomness)
+  const y      = 110 - progress * 130;
+  const wobble = Math.sin(progress * Math.PI * 6 + random(`${seed}-phase`) * 20) * 1.5;
 
   const particleOpacity = interpolate(
     progress,
@@ -54,7 +55,6 @@ const Particle = ({ seed, totalFrames }) => {
   );
 };
 
-// ─── Light sweep ──────────────────────────────────────────────────────────────
 const LightSweep = ({ totalFrames }) => {
   const frame = useCurrentFrame();
 
@@ -84,7 +84,6 @@ const LightSweep = ({ totalFrames }) => {
   );
 };
 
-// ─── Rotating ring highlight ──────────────────────────────────────────────────
 const RingHighlight = ({ size, totalFrames }) => {
   const frame = useCurrentFrame();
 
@@ -103,14 +102,14 @@ const RingHighlight = ({ size, totalFrames }) => {
         borderRadius: '50%',
         background: `conic-gradient(
           from ${angle}deg,
-          rgba(255, 140, 0, 0)   0deg,
-          rgba(255, 140, 0, 0.05) 20deg,
-          rgba(255, 200, 100, 0.35) 40deg,
-          rgba(255, 255, 255, 0.5)  50deg,
-          rgba(255, 200, 100, 0.35) 60deg,
-          rgba(255, 140, 0, 0.05) 80deg,
-          rgba(255, 140, 0, 0)   100deg,
-          transparent 100deg
+          rgba(255,140,0,0)      0deg,
+          rgba(255,140,0,0.05)  20deg,
+          rgba(255,200,100,0.35) 40deg,
+          rgba(255,255,255,0.5)  50deg,
+          rgba(255,200,100,0.35) 60deg,
+          rgba(255,140,0,0.05)  80deg,
+          rgba(255,140,0,0)    100deg,
+          transparent          100deg
         )`,
         pointerEvents: 'none',
       }}
@@ -118,7 +117,6 @@ const RingHighlight = ({ size, totalFrames }) => {
   );
 };
 
-// ─── Glow ring overlay ────────────────────────────────────────────────────────
 const GlowRing = ({ size, totalFrames }) => {
   const frame = useCurrentFrame();
 
@@ -135,11 +133,10 @@ const GlowRing = ({ size, totalFrames }) => {
         width: size + 24,
         height: size + 24,
         borderRadius: '50%',
-        border: '3px solid rgba(255, 140, 0, 0)',
         boxShadow: `
-          0 0 ${20 + glowOpacity * 20}px ${6}px rgba(255,140,0,${glowOpacity * 0.4}),
-          0 0 ${40 + glowOpacity * 30}px ${12}px rgba(0,32,96,${glowOpacity * 0.25}),
-          inset 0 0 ${20}px rgba(255,255,255,0.04)
+          0 0 ${20 + glowOpacity * 20}px 6px rgba(255,140,0,${glowOpacity * 0.4}),
+          0 0 ${40 + glowOpacity * 30}px 12px rgba(0,32,96,${glowOpacity * 0.25}),
+          inset 0 0 20px rgba(255,255,255,0.04)
         `,
         pointerEvents: 'none',
       }}
@@ -147,26 +144,24 @@ const GlowRing = ({ size, totalFrames }) => {
   );
 };
 
-// ─── Heart pulse overlay (positioned over center) ─────────────────────────────
-const HeartPulse = ({ infographicSize, totalFrames }) => {
+const HeartPulse = ({ infographicSize }) => {
   const frame = useCurrentFrame();
 
-  // Pulse every ~60 frames (1 second at 60fps)
-  const cycleFrame = frame % 90;
+  // Pulse cycle every 45 frames (1.5 s at 30 fps)
+  const cycleFrame = frame % 45;
   const pulseScale = interpolate(
     cycleFrame,
-    [0, 8, 20, 90],
+    [0, 4, 10, 45],
     [1, 1.08, 1, 1],
     { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: easeOut }
   );
   const pulseGlow = interpolate(
     cycleFrame,
-    [0, 8, 30, 90],
+    [0, 4, 15, 45],
     [0, 1, 0.3, 0],
     { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
   );
 
-  // Heart is roughly at the center, ~7% of the infographic diameter
   const heartSize = infographicSize * 0.07;
 
   return (
@@ -184,57 +179,41 @@ const HeartPulse = ({ infographicSize, totalFrames }) => {
   );
 };
 
-// ─── Main composition ─────────────────────────────────────────────────────────
 export const InteligenMotion = () => {
   const frame = useCurrentFrame();
-  const { width, height, durationInFrames: total } = useVideoConfig();
+  const { height, durationInFrames: total } = useVideoConfig();
 
   const progress = frame / total;
 
-  // ── Camera zoom: 1.0 → 1.10
   const scale = interpolate(frame, [0, total], [1.0, 1.10], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
     easing: easeOut,
   });
 
-  // ── Very subtle orbit: horizontal drift ±12px over full duration
   const orbitX = interpolate(
     Math.sin(progress * Math.PI * 2),
     [-1, 1],
     [-10, 10]
   );
 
-  // ── Gentle float: vertical sine ±8px
-  const floatY = Math.sin((frame / total) * Math.PI * 3) * 8;
+  const floatY = Math.sin(progress * Math.PI * 3) * 8;
 
-  // ── Max 4° clockwise rotation over full duration
   const rotation = interpolate(frame, [0, total], [0, 4], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
     easing: easeInOut,
   });
 
-  // ── Ambient dimming pulse (very subtle) — simulates "breathing" light
   const ambientBrightness = interpolate(
     Math.sin(progress * Math.PI * 2),
     [-1, 1],
     [0.97, 1.03]
   );
 
-  // ── Depth of field: slight blur at edges via vignette
-
-  // Infographic size: 78% of height, keep aspect ratio square
   const infographicSize = height * 0.82;
 
-  // Particles
-  const particles = useMemo(
-    () => Array.from({ length: 45 }, (_, i) => i + 1),
-    []
-  );
-
-  // ── Fade-in from white
-  const fadeIn = interpolate(frame, [0, 30], [0, 1], {
+  const fadeIn = interpolate(frame, [0, 20], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
     easing: easeOut,
@@ -243,7 +222,6 @@ export const InteligenMotion = () => {
   return (
     <AbsoluteFill style={{ backgroundColor: '#ffffff', overflow: 'hidden' }}>
 
-      {/* ── Ambient gradient background (very subtle warm center) */}
       <div
         style={{
           position: 'absolute',
@@ -256,14 +234,12 @@ export const InteligenMotion = () => {
         }}
       />
 
-      {/* ── Particles (behind infographic) */}
       <AbsoluteFill style={{ opacity: fadeIn * 0.6 }}>
-        {particles.map((seed) => (
+        {PARTICLE_SEEDS.map((seed) => (
           <Particle key={seed} seed={seed} totalFrames={total} />
         ))}
       </AbsoluteFill>
 
-      {/* ── Infographic + all overlays */}
       <AbsoluteFill
         style={{
           display: 'flex',
@@ -278,16 +254,11 @@ export const InteligenMotion = () => {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            transform: `
-              translate(${orbitX}px, ${floatY}px)
-              scale(${scale})
-              rotate(${rotation}deg)
-            `,
+            transform: `translate(${orbitX}px, ${floatY}px) scale(${scale}) rotate(${rotation}deg)`,
             filter: `brightness(${ambientBrightness})`,
-            willChange: 'transform',
           }}
         >
-          {/* ── Soft drop shadow beneath the infographic */}
+          {/* Drop shadow */}
           <div
             style={{
               position: 'absolute',
@@ -302,32 +273,15 @@ export const InteligenMotion = () => {
             }}
           />
 
-          {/* ── Outer glow ring */}
-          <div
-            style={{
-              position: 'absolute',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          >
+          <div style={{ position: 'absolute', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             <GlowRing size={infographicSize} totalFrames={total} />
           </div>
 
-          {/* ── Rotating highlight on ring */}
-          <div
-            style={{
-              position: 'absolute',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              opacity: 0.55,
-            }}
-          >
+          <div style={{ position: 'absolute', display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: 0.55 }}>
             <RingHighlight size={infographicSize * 0.97} totalFrames={total} />
           </div>
 
-          {/* ── The actual infographic image — untouched */}
+          {/* Infographic — untouched */}
           <Img
             src={staticFile('infographic.png')}
             style={{
@@ -338,7 +292,7 @@ export const InteligenMotion = () => {
             }}
           />
 
-          {/* ── Light sweep overlay (on top of image) */}
+          {/* Light sweep */}
           <div
             style={{
               position: 'absolute',
@@ -352,23 +306,22 @@ export const InteligenMotion = () => {
             <LightSweep totalFrames={total} />
           </div>
 
-          {/* ── Heart pulse (centered, ~center of the circular infographic) */}
+          {/* Heart pulse */}
           <div
             style={{
               position: 'absolute',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              // Adjust Y slightly upward — heart is ~5% above true center
               transform: 'translateY(-2%)',
             }}
           >
-            <HeartPulse infographicSize={infographicSize} totalFrames={total} />
+            <HeartPulse infographicSize={infographicSize} />
           </div>
         </div>
       </AbsoluteFill>
 
-      {/* ── Vignette depth-of-field overlay */}
+      {/* Depth-of-field vignette */}
       <div
         style={{
           position: 'absolute',
@@ -382,7 +335,7 @@ export const InteligenMotion = () => {
         }}
       />
 
-      {/* ── Subtle top-left ambient light source */}
+      {/* Ambient top-left light */}
       <div
         style={{
           position: 'absolute',
